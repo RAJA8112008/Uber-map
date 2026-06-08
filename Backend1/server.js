@@ -1,3 +1,5 @@
+require("dotenv").config();
+console.log("MONGO_URL loaded:", process.env.MONGO_URL);
 const http=require("http");
 const app=require("./app");
 
