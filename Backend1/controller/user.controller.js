@@ -55,5 +55,12 @@ module.exports.loginUser=async(req,res,next)=>{
     return res.status(400).json({error:"Invalid email or password"});
   }
   const token=user.generateAuthToken();
+  res.cookie("token",token);
   return res.status(200).json({token,user});
 }
+
+
+//<-----------------Profile controller--------------------->
+module.exports.getProfile=async(req,res,next)=>{
+  res.status(200).json({user:req.user});
+  }
