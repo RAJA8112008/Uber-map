@@ -24,6 +24,8 @@ if(isCaptainAlreadyExist){
     vehicleType:vehicle.vehicleType || vehicle.vechicalType || vehicle.vechileType
    })
 
+
+   
    const token=captain.generateAuthToken();
    res.status(201).json({message:"Captain created successfully", captain,token});
 }
