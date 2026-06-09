@@ -1333,4 +1333,754 @@ else:
 
 ---
 
+## Captain Login Endpoint
+
+### Endpoint: `/captains/login`
+
+**Method:** `POST`
+
+---
+
+## Description
+
+The `/captains/login` endpoint allows registered captains to authenticate and obtain an authentication token. Captains must provide their registered email address and password. The endpoint validates the credentials, compares the provided password with the stored hashed password using bcrypt, and returns an authentication token along with the captain information if credentials are valid.
+
+---
+
+## Request
+
+### URL
+```
+POST /captains/login
+```
+
+### Headers
+```
+Content-Type: application/json
+```
+
+### Request Body
+
+The request body must be a JSON object with the following structure:
+
+```json
+{
+  "email": "string (required, valid email format)",
+  "password": "string (required, min 6 characters)"
+}
+```
+
+### Request Parameters
+
+| Parameter | Type | Required | Validation | Description |
+|-----------|------|----------|-----------|-------------|
+| `email` | String | Yes | Valid email format | Registered captain's email address |
+| `password` | String | Yes | Min 6 characters | Captain's password |
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:5000/captains/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "raj.kumar@example.com",
+    "password": "securePassword123"
+  }'
+```
+
+---
+
+## Response
+
+### Success Response (200 OK)
+
+**Status Code:** `200`
+
+```json
+{
+  "message": "Login successful",
+  "captain": {
+    "_id": "60d5ec49c1234567890abcde",
+    "fullname": {
+      "firstname": "Raj",
+      "lastname": "Kumar"
+    },
+    "email": "raj.kumar@example.com",
+    "vehicle": {
+      "color": "white",
+      "plate": "DL-01-AB-1234",
+      "capacity": 4,
+      "vehicleType": "car"
+    },
+    "status": "inactive",
+    "socketId": null,
+    "location": {
+      "lat": null,
+      "lng": null
+    },
+    "__v": 0
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | String | Success message |
+| `captain` | Object | Captain's profile information |
+| `token` | String | JWT authentication token (expires in 24 hours) |
+
+---
+
+## Error Responses
+
+### 400 Bad Request - Invalid Credentials
+
+**Status Code:** `400`
+
+Returned when email or password is invalid.
+
+```json
+{
+  "message": "Invalid email or password"
+}
+```
+
+### 400 Bad Request - Validation Errors
+
+**Status Code:** `400`
+
+Returned when request validation fails.
+
+```json
+{
+  "errors": [
+    {
+      "type": "field",
+      "value": "invalidemail",
+      "msg": "Please provide a valid email address",
+      "path": "email",
+      "location": "body"
+    }
+  ]
+}
+```
+
+### 500 Internal Server Error
+
+**Status Code:** `500`
+
+Returned when an unexpected server error occurs during login.
+
+```json
+{
+  "error": "Internal server error"
+}
+```
+
+---
+
+## Status Codes Summary
+
+| Status Code | Description |
+|-------------|-------------|
+| `200` | Captain successfully logged in. Returns JWT token and captain data. |
+| `400` | Bad request. Invalid credentials or validation failed. |
+| `500` | Internal server error. Contact support if issue persists. |
+
+---
+
+## Security Notes
+
+- **Authentication Token:** JWT tokens are issued with 24-hour expiration
+- **Password Verification:** Password is compared using bcrypt for security
+- **Cookie Storage:** Token is stored as an HTTP-only cookie for client reference
+- **Credentials:** Valid email and password combination is required for successful login
+
+---
+
+## Example Usage
+
+### JavaScript/Node.js (using fetch)
+
+```javascript
+const loginCaptain = async () => {
+  const credentials = {
+    email: "raj.kumar@example.com",
+    password: "securePassword123"
+  };
+
+  try {
+    const response = await fetch('/captains/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(credentials)
+    });
+
+    const data = await response.json();
+
+    if (response.status === 200) {
+      console.log('Login successful!');
+      console.log('Token:', data.token);
+      console.log('Captain:', data.captain);
+      // Store token in localStorage or sessionStorage
+      localStorage.setItem('authToken', data.token);
+    } else {
+      console.error('Login failed:', data.message || data.errors);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+```
+
+### Python (using requests)
+
+```python
+import requests
+
+url = "http://localhost:5000/captains/login"
+
+payload = {
+    "email": "raj.kumar@example.com",
+    "password": "securePassword123"
+}
+
+headers = {
+    "Content-Type": "application/json"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+
+if response.status_code == 200:
+    data = response.json()
+    print("Login successful!")
+    print("Token:", data['token'])
+    print("Captain:", data['captain'])
+else:
+    print("Login failed:", response.json())
+```
+
+---
+
+## Notes
+
+- Email and password combination must match an existing captain account
+- Incorrect credentials will not reveal whether email or password is wrong (security best practice)
+- Token is valid for 24 hours from login time
+- Token should be included in subsequent authenticated requests
+
+---
+
+## Captain Profile Endpoint
+
+### Endpoint: `/captains/profile`
+
+**Method:** `GET`
+
+---
+
+## Description
+
+The `/captains/profile` endpoint allows authenticated captains to retrieve their complete profile information. This endpoint requires a valid JWT token in either the Authorization header or cookies. It returns the captain's personal information, vehicle details, account status, and location data.
+
+---
+
+## Request
+
+### URL
+```
+GET /captains/profile
+```
+
+### Headers
+```
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
+```
+
+Or via Cookie:
+```
+Cookie: token=<JWT_TOKEN>
+```
+
+### Authentication
+
+This endpoint requires authentication. Include your JWT token in one of these ways:
+1. **Authorization Header:** `Authorization: Bearer <your_jwt_token>`
+2. **Cookie:** `token=<your_jwt_token>`
+
+### Request Parameters
+
+No request parameters required. The captain ID is extracted from the JWT token.
+
+### Example Request
+
+```bash
+curl -X GET http://localhost:5000/captains/profile \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+Or with cookie:
+```bash
+curl -X GET http://localhost:5000/captains/profile \
+  -H "Content-Type: application/json" \
+  -b "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+---
+
+## Response
+
+### Success Response (200 OK)
+
+**Status Code:** `200`
+
+```json
+{
+  "captain": {
+    "_id": "60d5ec49c1234567890abcde",
+    "fullname": {
+      "firstname": "Raj",
+      "lastname": "Kumar"
+    },
+    "email": "raj.kumar@example.com",
+    "vehicle": {
+      "color": "white",
+      "plate": "DL-01-AB-1234",
+      "capacity": 4,
+      "vehicleType": "car"
+    },
+    "status": "inactive",
+    "socketId": null,
+    "location": {
+      "lat": null,
+      "lng": null
+    },
+    "__v": 0
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `captain._id` | String | Unique captain identifier (MongoDB ObjectId) |
+| `captain.fullname.firstname` | String | Captain's first name |
+| `captain.fullname.lastname` | String | Captain's last name |
+| `captain.email` | String | Captain's email address |
+| `captain.vehicle.color` | String | Vehicle color |
+| `captain.vehicle.plate` | String | Vehicle license plate number |
+| `captain.vehicle.capacity` | Number | Vehicle passenger capacity |
+| `captain.vehicle.vehicleType` | String | Vehicle type (car, auto, or bike) |
+| `captain.status` | String | Captain's current status ('active' or 'inactive') |
+| `captain.socketId` | String/Null | Socket ID for real-time communication |
+| `captain.location.lat` | Number/Null | Captain's current latitude location |
+| `captain.location.lng` | Number/Null | Captain's current longitude location |
+
+---
+
+## Error Responses
+
+### 401 Unauthorized - No Token Provided
+
+**Status Code:** `401`
+
+Returned when no token is provided in the request.
+
+```json
+{
+  "error": "Access denied. No token provided."
+}
+```
+
+### 401 Unauthorized - Invalid Token
+
+**Status Code:** `401`
+
+Returned when the token is invalid or malformed.
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+### 401 Unauthorized - Token Blacklisted
+
+**Status Code:** `401`
+
+Returned when the token has been blacklisted (e.g., after logout).
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### 401 Unauthorized - Captain Not Found
+
+**Status Code:** `401`
+
+Returned when the captain account associated with the token no longer exists.
+
+```json
+{
+  "error": "Captain not found"
+}
+```
+
+### 500 Internal Server Error
+
+**Status Code:** `500`
+
+Returned when an unexpected server error occurs.
+
+```json
+{
+  "error": "Internal server error"
+}
+```
+
+---
+
+## Status Codes Summary
+
+| Status Code | Description |
+|-------------|-------------|
+| `200` | Profile retrieved successfully. Returns captain's complete profile. |
+| `401` | Unauthorized. Token missing, invalid, or blacklisted. |
+| `500` | Internal server error. Contact support if issue persists. |
+
+---
+
+## Security Notes
+
+- **Authentication Required:** This endpoint is protected and requires a valid JWT token
+- **Token Expiration:** Tokens expire after 24 hours; a new login is required after expiration
+- **Token Blacklisting:** Tokens added to the blacklist cannot be used (e.g., after logout)
+- **Captain Verification:** The captain account is verified to exist at the time of request
+
+---
+
+## Example Usage
+
+### JavaScript/Node.js (using fetch)
+
+```javascript
+const getCaptainProfile = async (token) => {
+  try {
+    const response = await fetch('/captains/profile', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (response.status === 200) {
+      console.log('Profile retrieved successfully!');
+      console.log('Captain:', data.captain);
+      console.log('Email:', data.captain.email);
+      console.log('Vehicle Type:', data.captain.vehicle.vehicleType);
+      console.log('Status:', data.captain.status);
+    } else {
+      console.error('Failed to retrieve profile:', data.error);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+// Usage
+const token = localStorage.getItem('authToken');
+getCaptainProfile(token);
+```
+
+### Python (using requests)
+
+```python
+import requests
+
+url = "http://localhost:5000/captains/profile"
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {token}"
+}
+
+response = requests.get(url, headers=headers)
+
+if response.status_code == 200:
+    data = response.json()
+    print("Profile retrieved successfully!")
+    print("Captain Email:", data['captain']['email'])
+    print("Vehicle Type:", data['captain']['vehicle']['vehicleType'])
+    print("Status:", data['captain']['status'])
+else:
+    print("Failed to retrieve profile:", response.json())
+```
+
+---
+
+## Notes
+
+- Profile information is always retrieved from the current authenticated captain
+- All captain data including vehicle and location information is returned
+- The password field is never included in the response for security reasons
+- This endpoint can be used to verify captain identity and current status
+
+---
+
+## Captain Logout Endpoint
+
+### Endpoint: `/captains/logout`
+
+**Method:** `GET`
+
+---
+
+## Description
+
+The `/captains/logout` endpoint allows authenticated captains to terminate their session and invalidate their authentication token. This endpoint requires a valid JWT token in either the Authorization header or cookies. Upon successful logout, the token is added to a blacklist, preventing further use of that token for authentication.
+
+---
+
+## Request
+
+### URL
+```
+GET /captains/logout
+```
+
+### Headers
+```
+Content-Type: application/json
+Authorization: Bearer <JWT_TOKEN>
+```
+
+Or via Cookie:
+```
+Cookie: token=<JWT_TOKEN>
+```
+
+### Authentication
+
+This endpoint requires authentication. Include your JWT token in one of these ways:
+1. **Authorization Header:** `Authorization: Bearer <your_jwt_token>`
+2. **Cookie:** `token=<your_jwt_token>`
+
+### Request Parameters
+
+No request parameters required. The captain ID is extracted from the JWT token.
+
+### Example Request
+
+```bash
+curl -X GET http://localhost:5000/captains/logout \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+Or with cookie:
+```bash
+curl -X GET http://localhost:5000/captains/logout \
+  -H "Content-Type: application/json" \
+  -b "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+---
+
+## Response
+
+### Success Response (200 OK)
+
+**Status Code:** `200`
+
+```json
+{
+  "message": "Logout successful"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | String | Success message indicating logout completion |
+
+---
+
+## Error Responses
+
+### 401 Unauthorized - No Token Provided
+
+**Status Code:** `401`
+
+Returned when no token is provided in the request.
+
+```json
+{
+  "error": "Access denied. No token provided."
+}
+```
+
+### 401 Unauthorized - Invalid Token
+
+**Status Code:** `401`
+
+Returned when the token is invalid or malformed.
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+### 401 Unauthorized - Token Blacklisted
+
+**Status Code:** `401`
+
+Returned when attempting to logout with an already blacklisted token.
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### 401 Unauthorized - Captain Not Found
+
+**Status Code:** `401`
+
+Returned when the captain account associated with the token no longer exists.
+
+```json
+{
+  "error": "Captain not found"
+}
+```
+
+### 500 Internal Server Error
+
+**Status Code:** `500`
+
+Returned when an unexpected server error occurs during logout.
+
+```json
+{
+  "error": "Internal server error"
+}
+```
+
+---
+
+## Status Codes Summary
+
+| Status Code | Description |
+|-------------|-------------|
+| `200` | Captain successfully logged out. Token has been blacklisted. |
+| `401` | Unauthorized. Token missing, invalid, or already blacklisted. |
+| `500` | Internal server error. Contact support if issue persists. |
+
+---
+
+## Security Notes
+
+- **Token Blacklisting:** The token is added to the blacklist upon logout, preventing future use
+- **Cookie Clearing:** The authentication cookie is cleared from the client
+- **Immediate Effect:** Token invalidation takes effect immediately across all services
+- **One-Time Use:** Once a token is blacklisted, it cannot be reused even if the expiration time hasn't passed
+- **Multiple Logout Attempts:** Attempting to logout with the same token a second time will fail with a 401 error
+
+---
+
+## Example Usage
+
+### JavaScript/Node.js (using fetch)
+
+```javascript
+const logoutCaptain = async (token) => {
+  try {
+    const response = await fetch('/captains/logout', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (response.status === 200) {
+      console.log('Logout successful!');
+      console.log('Message:', data.message);
+      
+      // Clear stored token from localStorage or sessionStorage
+      localStorage.removeItem('authToken');
+      
+      // Redirect to login page (example)
+      window.location.href = '/login';
+    } else {
+      console.error('Logout failed:', data.error || data.message);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+// Usage
+const token = localStorage.getItem('authToken');
+logoutCaptain(token);
+```
+
+### Python (using requests)
+
+```python
+import requests
+
+url = "http://localhost:5000/captains/logout"
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {token}"
+}
+
+response = requests.get(url, headers=headers)
+
+if response.status_code == 200:
+    data = response.json()
+    print("Logout successful!")
+    print("Message:", data['message'])
+    # Clear stored token
+    # Redirect to login page
+else:
+    print("Logout failed:", response.json())
+```
+
+---
+
+## Notes
+
+- This endpoint terminates the captain's session immediately
+- The token becomes invalid for all future requests after logout
+- Captains must log in again to obtain a new valid token
+- The logout operation is irreversible; the token cannot be reactivated
+- Best practice is to clear the stored token from client-side storage after logout
+- Captains should be redirected to the login page after successful logout
+- Multiple logout attempts with the same token will fail on the second attempt (token already blacklisted)
+- The token is removed from the cookie on the client side
+
+---
+
 **Last Updated:** June 9, 2026
