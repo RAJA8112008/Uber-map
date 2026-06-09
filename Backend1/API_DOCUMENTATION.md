@@ -1016,4 +1016,321 @@ else:
 
 ---
 
+## Captain Registration Endpoint
+
+### Endpoint: `/captains/register`
+
+**Method:** `POST`
+
+---
+
+## Description
+
+The `/captains/register` endpoint allows new captains (drivers) to create an account in the Uber-map application. Captains must provide their full name (first and last), email address, password, and vehicle information (color, plate number, capacity, and vehicle type). The endpoint validates all input data, hashes the password using bcrypt, creates a new captain record in the database, and returns an authentication token along with the captain information.
+
+---
+
+## Request
+
+### URL
+```
+POST /captains/register
+```
+
+### Headers
+```
+Content-Type: application/json
+```
+
+### Request Body
+
+The request body must be a JSON object with the following structure:
+
+```json
+{
+  "fullname": {
+    "firstname": "string (required, min 3 characters)",
+    "lastname": "string (optional, min 3 characters)"
+  },
+  "email": "string (required, valid email format)",
+  "password": "string (required, min 6 characters)",
+  "vehicle": {
+    "color": "string (required, min 3 characters)",
+    "plate": "string (required, min 3 characters)",
+    "capacity": "number (required, min 1)",
+    "vehicleType": "string (required, one of: 'car', 'auto', 'bike')"
+  }
+}
+```
+
+### Request Parameters
+
+| Parameter | Type | Required | Validation | Description |
+|-----------|------|----------|-----------|-------------|
+| `fullname.firstname` | String | Yes | Min 3 characters | Captain's first name |
+| `fullname.lastname` | String | No | Min 3 characters (if provided) | Captain's last name |
+| `email` | String | Yes | Valid email format, unique | Captain's email address (must be unique in the system) |
+| `password` | String | Yes | Min 6 characters | Captain's password (will be hashed with bcrypt) |
+| `vehicle.color` | String | Yes | Min 3 characters | Vehicle color |
+| `vehicle.plate` | String | Yes | Min 3 characters | Vehicle license plate number |
+| `vehicle.capacity` | Number | Yes | Min 1 | Number of passengers the vehicle can accommodate |
+| `vehicle.vehicleType` | String | Yes | One of: 'car', 'auto', 'bike' | Type of vehicle |
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:5000/captains/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullname": {
+      "firstname": "Raj",
+      "lastname": "Kumar"
+    },
+    "email": "raj.kumar@example.com",
+    "password": "securePassword123",
+    "vehicle": {
+      "color": "white",
+      "plate": "DL-01-AB-1234",
+      "capacity": 4,
+      "vehicleType": "car"
+    }
+  }'
+```
+
+---
+
+## Response
+
+### Success Response (201 Created)
+
+**Status Code:** `201`
+
+```json
+{
+  "message": "Captain created successfully",
+  "captain": {
+    "_id": "60d5ec49c1234567890abcde",
+    "fullname": {
+      "firstname": "Raj",
+      "lastname": "Kumar"
+    },
+    "email": "raj.kumar@example.com",
+    "vehicle": {
+      "color": "white",
+      "plate": "DL-01-AB-1234",
+      "capacity": 4,
+      "vehicleType": "car"
+    },
+    "status": "inactive",
+    "socketId": null,
+    "location": {
+      "lat": null,
+      "lng": null
+    },
+    "__v": 0
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | String | Success message |
+| `captain._id` | String | Unique captain identifier (MongoDB ObjectId) |
+| `captain.fullname.firstname` | String | Captain's first name |
+| `captain.fullname.lastname` | String | Captain's last name |
+| `captain.email` | String | Captain's email address |
+| `captain.vehicle.color` | String | Vehicle color |
+| `captain.vehicle.plate` | String | Vehicle license plate number |
+| `captain.vehicle.capacity` | Number | Vehicle passenger capacity |
+| `captain.vehicle.vehicleType` | String | Vehicle type (car, auto, or bike) |
+| `captain.status` | String | Captain's current status ('active' or 'inactive', defaults to 'inactive') |
+| `captain.socketId` | String/Null | Socket ID for real-time communication (null initially) |
+| `captain.location.lat` | Number/Null | Captain's latitude location (null initially) |
+| `captain.location.lng` | Number/Null | Captain's longitude location (null initially) |
+| `token` | String | JWT authentication token (expires in 24 hours) |
+
+---
+
+## Error Responses
+
+### 400 Bad Request - Validation Errors
+
+**Status Code:** `400`
+
+Returned when request validation fails.
+
+```json
+{
+  "errors": [
+    {
+      "type": "field",
+      "value": "ab",
+      "msg": "First name must be at least 3 characters long",
+      "path": "fullname.firstname",
+      "location": "body"
+    }
+  ]
+}
+```
+
+**Common Validation Errors:**
+
+| Error Message | Cause |
+|---------------|-------|
+| "First name must be at least 3 characters long" | `fullname.firstname` is less than 3 characters |
+| "Last name must be at least 3 characters long" | `fullname.lastname` is provided but less than 3 characters |
+| "Please provide a valid email address" | `email` is not a valid email format |
+| "Password must be at least 6 characters long" | `password` is less than 6 characters |
+| "Color must be at least 3 characters long" | `vehicle.color` is less than 3 characters |
+| "Plate must be at least 3 characters long" | `vehicle.plate` is less than 3 characters |
+| "Capacity must be at least 1" | `vehicle.capacity` is less than 1 |
+| "Vehicle type must be either car, auto or bike" | `vehicle.vehicleType` is not one of the allowed types |
+
+### 400 Bad Request - Duplicate Email
+
+**Status Code:** `400`
+
+Returned when attempting to register with an email that already exists in the system.
+
+```json
+{
+  "message": "Captain with this email already exists"
+}
+```
+
+### 500 Internal Server Error
+
+**Status Code:** `500`
+
+Returned when an unexpected server error occurs during registration.
+
+```json
+{
+  "error": "Internal server error"
+}
+```
+
+---
+
+## Status Codes Summary
+
+| Status Code | Description |
+|-------------|-------------|
+| `201` | Captain successfully registered. Returns JWT token and captain data. |
+| `400` | Bad request. Validation failed or email already exists. Check error messages for details. |
+| `500` | Internal server error. Contact support if issue persists. |
+
+---
+
+## Security Notes
+
+- **Password Hashing:** Passwords are hashed using bcrypt (salt rounds: 10) before storage
+- **Authentication Token:** JWT tokens are issued with 24-hour expiration
+- **Email Uniqueness:** Email addresses must be unique across all captains
+- **Password Field:** The password field is not selected by default in captain queries (security best practice)
+- **Initial Status:** New captains are created with 'inactive' status and must activate their account
+
+---
+
+## Example Usage
+
+### JavaScript/Node.js (using fetch)
+
+```javascript
+const registerCaptain = async () => {
+  const captainData = {
+    fullname: {
+      firstname: "Raj",
+      lastname: "Kumar"
+    },
+    email: "raj.kumar@example.com",
+    password: "securePassword123",
+    vehicle: {
+      color: "white",
+      plate: "DL-01-AB-1234",
+      capacity: 4,
+      vehicleType: "car"
+    }
+  };
+
+  try {
+    const response = await fetch('/captains/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(captainData)
+    });
+
+    const data = await response.json();
+
+    if (response.status === 201) {
+      console.log('Registration successful!');
+      console.log('Token:', data.token);
+      console.log('Captain:', data.captain);
+      // Store token in localStorage or sessionStorage
+      localStorage.setItem('authToken', data.token);
+    } else {
+      console.error('Registration failed:', data.errors || data.message);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+```
+
+### Python (using requests)
+
+```python
+import requests
+
+url = "http://localhost:5000/captains/register"
+
+payload = {
+    "fullname": {
+        "firstname": "Raj",
+        "lastname": "Kumar"
+    },
+    "email": "raj.kumar@example.com",
+    "password": "securePassword123",
+    "vehicle": {
+        "color": "white",
+        "plate": "DL-01-AB-1234",
+        "capacity": 4,
+        "vehicleType": "car"
+    }
+}
+
+headers = {
+    "Content-Type": "application/json"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+
+if response.status_code == 201:
+    data = response.json()
+    print("Registration successful!")
+    print("Token:", data['token'])
+    print("Captain:", data['captain'])
+else:
+    print("Registration failed:", response.json())
+```
+
+---
+
+## Notes
+
+- All fields in the request body are required except `fullname.lastname`
+- Email addresses are case-sensitive and must be unique
+- Passwords must be at least 6 characters long for security
+- Vehicle type must be exactly one of: 'car', 'auto', or 'bike' (case-insensitive)
+- The returned JWT token should be used for authenticated requests (typically stored in Authorization header as "Bearer {token}")
+- Captain registrations are stored in MongoDB
+- New captains start with 'inactive' status and zero location coordinates
+
+---
+
 **Last Updated:** June 9, 2026

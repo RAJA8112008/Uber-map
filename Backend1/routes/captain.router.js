@@ -1,0 +1,27 @@
+const express=require("express");
+const captainController=require("../controller/captain.controller");
+const router=express.Router();
+const {body}=require("express-validator");
+
+router.post("/register",[
+    body("fullname.firstname").isString().withMessage("First name must be a string").isLength({min:3}).withMessage("First name must be at least 3 characters long"),
+    body("fullname.lastname").optional().isString().withMessage("Last name must be a string").isLength({min:3}).withMessage("Last name must be at least 3 characters long"),
+    body("email").isEmail().withMessage("Please provide a valid email address"),   
+    body("password").isLength({min:6}).withMessage("Password must be at least 6 characters long"),
+    body("vehicle.color").isString().withMessage("Color must be a string").isLength({min:3}).withMessage("Color must be at least 3 characters long"),
+    body("vehicle.plate").isString().withMessage("Plate must be a string").isLength({min:3}).withMessage("Plate must be at least 3 characters long"),
+    body("vehicle.capacity").isInt({min:1}).withMessage("Capacity must be at least 1"),
+    body("vehicle").custom(vehicle => {
+        if (!vehicle || typeof vehicle !== "object") {
+            throw new Error("Vehicle must be an object");
+        }
+        const type = vehicle.vehicleType ?? vehicle.vechicalType ?? vehicle.vechileType;
+        if (!type || !["car", "auto", "bike"].includes(String(type).toLowerCase())) {
+            throw new Error("Vehicle type must be either car, auto or bike");
+        }
+        return true;
+    })
+],captainController.registerCaptain); 
+
+
+module.exports=router;
