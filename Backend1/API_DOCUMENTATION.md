@@ -510,4 +510,510 @@ else:
 
 ---
 
+## User Profile Endpoint
+
+### Endpoint: `/users/profile`
+
+**Method:** `GET`
+
+---
+
+## Description
+
+The `/users/profile` endpoint retrieves the current authenticated user's profile information. This is a protected endpoint that requires a valid JWT authentication token. The endpoint validates the provided token, retrieves the associated user information from the database, and returns the user's profile data.
+
+---
+
+## Request
+
+### URL
+```
+GET /users/profile
+```
+
+### Headers
+```
+Content-Type: application/json
+Authorization: Bearer {token}
+```
+
+OR (using cookies)
+```
+Content-Type: application/json
+Cookie: token={token}
+```
+
+### Authentication
+- **Required:** Yes
+- **Method:** JWT Token (Bearer token in Authorization header or in cookies)
+- **Token Source:** Received from `/users/register` or `/users/login` endpoint
+
+### Request Parameters
+
+| Parameter | Type | Required | Location | Description |
+|-----------|------|----------|----------|-------------|
+| `token` | String | Yes | Header (Authorization: Bearer) or Cookie | Valid JWT authentication token |
+
+### Example Request
+
+```bash
+curl -X GET http://localhost:5000/users/profile \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+OR using cookies:
+
+```bash
+curl -X GET http://localhost:5000/users/profile \
+  -H "Content-Type: application/json" \
+  -b "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+---
+
+## Response
+
+### Success Response (200 OK)
+
+**Status Code:** `200`
+
+```json
+{
+  "user": {
+    "_id": "60d5ec49c1234567890abcde",
+    "fullname": {
+      "firstname": "John",
+      "lastname": "Doe"
+    },
+    "email": "john.doe@example.com",
+    "socketId": null,
+    "__v": 0
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `user._id` | String | Unique user identifier (MongoDB ObjectId) |
+| `user.fullname.firstname` | String | User's first name |
+| `user.fullname.lastname` | String | User's last name |
+| `user.email` | String | User's email address |
+| `user.socketId` | String/Null | Socket ID for real-time communication (null if not connected) |
+| `user.__v` | Number | MongoDB version field |
+
+---
+
+## Error Responses
+
+### 401 Unauthorized - No Token Provided
+
+**Status Code:** `401`
+
+Returned when the request lacks authentication credentials.
+
+```json
+{
+  "error": "Access denied. No token provided."
+}
+```
+
+### 401 Unauthorized - Invalid Token
+
+**Status Code:** `401`
+
+Returned when the provided token is invalid, expired, or malformed.
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+### 401 Unauthorized - Token Blacklisted
+
+**Status Code:** `401`
+
+Returned when the token has been blacklisted (user has logged out).
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### 401 Unauthorized - User Not Found
+
+**Status Code:** `401`
+
+Returned when the user associated with the token no longer exists in the database.
+
+```json
+{
+  "error": "User not found"
+}
+```
+
+### 500 Internal Server Error
+
+**Status Code:** `500`
+
+Returned when an unexpected server error occurs.
+
+```json
+{
+  "error": "Internal server error"
+}
+```
+
+---
+
+## Status Codes Summary
+
+| Status Code | Description |
+|-------------|-------------|
+| `200` | User profile successfully retrieved. Returns user data. |
+| `401` | Unauthorized. No token provided, invalid token, or token blacklisted. |
+| `500` | Internal server error. Contact support if issue persists. |
+
+---
+
+## Security Notes
+
+- **Authentication Required:** This endpoint is protected and requires a valid JWT token
+- **Token Validation:** Token is verified against the JWT secret
+- **Blacklist Check:** The token is checked against the blacklist (tokens created before logout)
+- **Password Field:** The password field is never returned in the response
+- **Token Expiration:** Tokens expire after 24 hours and must be refreshed via re-login
+
+---
+
+## Example Usage
+
+### JavaScript/Node.js (using fetch)
+
+```javascript
+const getUserProfile = async (token) => {
+  try {
+    const response = await fetch('/users/profile', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (response.status === 200) {
+      console.log('Profile retrieved successfully!');
+      console.log('User:', data.user);
+      return data.user;
+    } else {
+      console.error('Failed to retrieve profile:', data.error);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+// Usage
+const token = localStorage.getItem('authToken');
+getUserProfile(token);
+```
+
+### Python (using requests)
+
+```python
+import requests
+
+url = "http://localhost:5000/users/profile"
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {token}"
+}
+
+response = requests.get(url, headers=headers)
+
+if response.status_code == 200:
+    data = response.json()
+    print("Profile retrieved successfully!")
+    print("User:", data['user'])
+else:
+    print("Failed to retrieve profile:", response.json())
+```
+
+---
+
+## Notes
+
+- This endpoint is read-only and does not modify user data
+- The token must be included in every request to this endpoint
+- Token can be provided either in the Authorization header as a Bearer token or in cookies
+- The profile reflects the current state of the user in the database
+- If user information has been updated by other processes, this endpoint returns the latest data
+
+---
+
+## User Logout Endpoint
+
+### Endpoint: `/users/logout`
+
+**Method:** `GET`
+
+---
+
+## Description
+
+The `/users/logout` endpoint allows authenticated users to end their session and invalidate their authentication token. This is a protected endpoint that requires a valid JWT authentication token. The endpoint adds the token to a blacklist, preventing it from being used for future authenticated requests, and clears the authentication cookie from the client.
+
+---
+
+## Request
+
+### URL
+```
+GET /users/logout
+```
+
+### Headers
+```
+Content-Type: application/json
+Authorization: Bearer {token}
+```
+
+OR (using cookies)
+```
+Content-Type: application/json
+Cookie: token={token}
+```
+
+### Authentication
+- **Required:** Yes
+- **Method:** JWT Token (Bearer token in Authorization header or in cookies)
+- **Token Source:** Received from `/users/register` or `/users/login` endpoint
+
+### Request Parameters
+
+| Parameter | Type | Required | Location | Description |
+|-----------|------|----------|----------|-------------|
+| `token` | String | Yes | Header (Authorization: Bearer) or Cookie | Valid JWT authentication token |
+
+### Example Request
+
+```bash
+curl -X GET http://localhost:5000/users/logout \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+OR using cookies:
+
+```bash
+curl -X GET http://localhost:5000/users/logout \
+  -H "Content-Type: application/json" \
+  -b "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+---
+
+## Response
+
+### Success Response (200 OK)
+
+**Status Code:** `200`
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | String | Confirmation message indicating successful logout |
+
+---
+
+## Error Responses
+
+### 400 Bad Request - No Token Found
+
+**Status Code:** `400`
+
+Returned when the token cannot be found in either the Authorization header or cookies.
+
+```json
+{
+  "message": "Token not found"
+}
+```
+
+### 401 Unauthorized - No Token Provided
+
+**Status Code:** `401`
+
+Returned when the request lacks authentication credentials.
+
+```json
+{
+  "error": "Access denied. No token provided."
+}
+```
+
+### 401 Unauthorized - Invalid Token
+
+**Status Code:** `401`
+
+Returned when the provided token is invalid, expired, or malformed.
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+### 401 Unauthorized - Token Blacklisted
+
+**Status Code:** `401`
+
+Returned when the token has already been blacklisted (user has already logged out).
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### 401 Unauthorized - User Not Found
+
+**Status Code:** `401`
+
+Returned when the user associated with the token no longer exists in the database.
+
+```json
+{
+  "error": "User not found"
+}
+```
+
+### 500 Internal Server Error
+
+**Status Code:** `500`
+
+Returned when an unexpected server error occurs during logout.
+
+```json
+{
+  "error": "Internal server error"
+}
+```
+
+---
+
+## Status Codes Summary
+
+| Status Code | Description |
+|-------------|-------------|
+| `200` | User successfully logged out. Token has been blacklisted. |
+| `400` | Bad request. Token not found in request. |
+| `401` | Unauthorized. No token provided, invalid token, or token already blacklisted. |
+| `500` | Internal server error. Contact support if issue persists. |
+
+---
+
+## Security Notes
+
+- **Authentication Required:** This endpoint is protected and requires a valid JWT token
+- **Token Blacklisting:** The token is added to the blacklist upon logout, preventing future use
+- **Cookie Clearing:** The authentication cookie is cleared from the client
+- **One-Time Use:** Once a token is blacklisted, it cannot be reused even if valid
+- **Immediate Effect:** Token invalidation takes effect immediately across all services
+
+---
+
+## Example Usage
+
+### JavaScript/Node.js (using fetch)
+
+```javascript
+const logoutUser = async (token) => {
+  try {
+    const response = await fetch('/users/logout', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (response.status === 200) {
+      console.log('Logout successful!');
+      console.log('Message:', data.message);
+      
+      // Clear stored token from localStorage or sessionStorage
+      localStorage.removeItem('authToken');
+      
+      // Redirect to login page (example)
+      window.location.href = '/login';
+    } else {
+      console.error('Logout failed:', data.error || data.message);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+};
+
+// Usage
+const token = localStorage.getItem('authToken');
+logoutUser(token);
+```
+
+### Python (using requests)
+
+```python
+import requests
+
+url = "http://localhost:5000/users/logout"
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {token}"
+}
+
+response = requests.get(url, headers=headers)
+
+if response.status_code == 200:
+    data = response.json()
+    print("Logout successful!")
+    print("Message:", data['message'])
+    # Clear stored token
+    # Redirect to login page
+else:
+    print("Logout failed:", response.json())
+```
+
+---
+
+## Notes
+
+- This endpoint terminates the user's session immediately
+- The token becomes invalid for all future requests after logout
+- Users must log in again to obtain a new valid token
+- The logout operation is irreversible; the token cannot be reactivated
+- Best practice is to clear the stored token from client-side storage after logout
+- Users should be redirected to the login page after successful logout
+- Multiple logout attempts with the same token will fail on the second attempt (token already blacklisted)
+
+---
+
 **Last Updated:** June 9, 2026

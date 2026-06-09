@@ -35,3 +35,9 @@ module.exports = router;
 //<-----------------profile route--------------------->
 
 router.get("/profile",authMiddleware.authUser,userController.getProfile);
+//<----------------logOut route-------------------->
+router.get(
+    "/logout",
+    authMiddleware.authUser,
+    userController.logoutUser
+);
