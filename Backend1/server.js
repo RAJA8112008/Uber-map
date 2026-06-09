@@ -1,11 +1,16 @@
 require("dotenv").config();
-console.log("MONGO_URL loaded:", process.env.MONGO_URL);
-const http=require("http");
-const app=require("./app");
 
-const port=process.env.PORT||4000;
-const server=http.createServer(app);
+const http = require("http");
 
-server.listen(port,()=>{
-    console.log(`server is running at port${port}`)
+const app = require("./app");
+const connectToDB = require("./db/db");
+
+connectToDB();
+
+const port = process.env.PORT || 4000;
+
+const server = http.createServer(app);
+
+server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
 });

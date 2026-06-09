@@ -1,15 +1,19 @@
- const express=require("express");
-const app=express();
-const cors=require("cors");
-const userRoutes=require("./routes/user.routes");
-const connectdb=require("./db/db");
-app.use(express.json());
-app.use(express.urlencoded({extended:true}));
-connectdb();
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+
+const userRoutes = require("./routes/user.routes");
+
 app.use(cors());
 
-app.get("/",(req,res)=>{
-    res.send("Hello world");
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.get("/", (req, res) => {
+    res.send("Hello World");
 });
 
-module.exports=app;
+app.use("/users", userRoutes);
+
+module.exports = app;
